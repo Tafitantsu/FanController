@@ -2,140 +2,140 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contrôle de Température - Maison Intelligente</title>
+    <title>Contrôle Ventilateur</title>
     <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #222;
             margin: 0;
-            padding: 20px;
-            background-color: #f4f4f4;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            padding: 0;
         }
         .container {
-            text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 420px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            padding: 32px 28px;
         }
         h1 {
-            color: #0056b3;
+            text-align: center;
+            color: #1976d2;
+            margin-bottom: 24px;
         }
         .status {
-            margin: 20px 0;
-            font-size: 1.2em;
-        }
-        .status-item {
-            margin-bottom: 15px;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .fan-on { background: #43a047; }
+        .fan-off { background: #bdbdbd; }
+        .led-on { background: #e53935; }
+        .led-off { background: #bdbdbd; }
+        .label {
+            font-weight: 500;
+        }
+        .threshold-form {
+            display: flex;
+            gap: 8px;
             align-items: center;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            width: 300px;
-            margin-left: auto;
-            margin-right: auto;
+            margin-bottom: 8px;
         }
-        .status-item span:first-child {
-            font-weight: bold;
-        }
-        .status-value {
-            font-weight: normal;
-            padding: 5px 10px;
-            border-radius: 5px;
-            color: white;
-        }
-        .temp { background-color: #28a745; }
-        .fan-on, .led-on { background-color: #dc3545; }
-        .fan-off, .led-off { background-color: #6c757d; }
-        label {
-            display: block;
-            margin: 10px 0 5px;
-        }
-        input {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            width: calc(100% - 22px);
-            margin-bottom: 10px;
+        input[type="number"] {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #bdbdbd;
+            width: 80px;
         }
         button {
-            padding: 10px 15px;
-            background-color: #007bff;
-            color: white;
+            background: #1976d2;
+            color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
+            padding: 6px 16px;
             cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
         }
         button:hover {
-            background-color: #0056b3;
+            background: #1565c0;
+        }
+        .error {
+            color: #e53935;
+            margin-top: 8px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <h1>Tableau de Bord</h1>
-    <div class="status">
-        <div class="status-item">
-            <span>Température Actuelle :</span>
-            <span id="temperature" class="status-value temp">--.-- °C</span>
+    <div class="container">
+        <h1>Contrôle du Ventilateur</h1>
+        <div class="status">
+            <div>
+                <span class="label">Température mesurée :</span>
+                <span id="temperature">--</span> °C
+            </div>
+            <div>
+                <span class="label">État du ventilateur :</span>
+                <span id="fan_indicator" class="indicator fan-off"></span>
+                <span id="fan_status">--</span>
+            </div>
+            <div>
+                <span class="label">LED :</span>
+                <span id="led_indicator" class="indicator led-off"></span>
+                <span id="led_status">--</span>
+            </div>
+            <div>
+                <span class="label">Seuil actuel :</span>
+                <span id="threshold">--</span> °C
+            </div>
         </div>
-        <div class="status-item">
-            <span>Ventilateur :</span>
-            <span id="fan-status" class="status-value">--</span>
-        </div>
-        <div class="status-item">
-            <span>LED de Surchauffe :</span>
-            <span id="led-status" class="status-value">--</span>
-        </div>
+        <form class="threshold-form" onsubmit="event.preventDefault(); setThreshold();">
+            <label for="new_threshold">Nouveau seuil :</label>
+            <input type="number" id="new_threshold" step="0.1" min="0">
+            <button type="submit">Définir</button>
+        </form>
+        <div id="error" class="error"></div>
     </div>
-    <div>
-        <label for="new_threshold">Nouveau seuil :</label>
-        <input type="number" id="new_threshold" step="0.1">
-        <button onclick="setThreshold()">Définir</button>
-    </div>
-</div>
+    <script>
+        const socket = io();
 
-<script>
-    const socket = io();
+        socket.on('data', function(data) {
+            document.getElementById('temperature').textContent = data.temperature;
+            document.getElementById('fan_status').textContent = data.fan_status;
+            document.getElementById('threshold').textContent = data.threshold;
+            document.getElementById('led_status').textContent = data.led_status || '--';
 
-    socket.on('data', function(data) {
-        document.getElementById('temperature').textContent = data.temperature.toFixed(2) + ' °C';
+            // Indicateurs visuels
+            document.getElementById('fan_indicator').className = 'indicator ' + (data.fan_status === 'ON' ? 'fan-on' : 'fan-off');
+            document.getElementById('led_indicator').className = 'indicator ' + (data.led_status === 'ON' ? 'led-on' : 'led-off');
+        });
 
-        // Mise à jour du ventilateur
-        const fanStatus = document.getElementById('fan-status');
-        fanStatus.textContent = data.fan_status;
-        fanStatus.className = 'status-value ' + (data.fan_status === 'ON' ? 'fan-on' : 'fan-off');
+        socket.on('threshold_updated', function(data) {
+            document.getElementById('threshold').textContent = data.threshold;
+            document.getElementById('error').textContent = '';
+        });
 
-        // Mise à jour de la LED
-        const ledStatus = document.getElementById('led-status');
-        ledStatus.textContent = data.led_status;
-        ledStatus.className = 'status-value ' + (data.led_status === 'ON' ? 'led-on' : 'led-off');
-    });
+        socket.on('error', function(data) {
+            document.getElementById('error').textContent = data.message;
+        });
 
-    socket.on('threshold_updated', function(data) {
-        document.getElementById('threshold').textContent = data.threshold;
-    });
-
-    function setThreshold() {
-        const val = document.getElementById('new_threshold').value;
-        socket.emit('set_threshold', {threshold: val});
-    }
-
-    // Met à jour le statut toutes les 2 secondes (correspond à READ_INTERVAL)
-    setInterval(updateStatus, 2000);
-
-    // Premier appel au chargement de la page
-    document.addEventListener('DOMContentLoaded', updateStatus);
-</script>
-
+        function setThreshold() {
+            const val = document.getElementById('new_threshold').value;
+            socket.emit('set_threshold', {threshold: val});
+        }
+    </script>
 </body>
+</html>
 </html>

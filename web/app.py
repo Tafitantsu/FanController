@@ -68,11 +68,35 @@ def handle_set_threshold(data):
     except Exception as e:
         emit('error', {'message': str(e)})
 
-def run_server(sensor, fan, led):
+def run_server(sensor, fan, led, shared_threshold):
     # Met à jour les objets hardware globaux
     system_hardware['sensor'] = sensor
     system_hardware['fan'] = fan
     system_hardware['led'] = led
+
+    @socketio.on('set_threshold')
+    def handle_set_threshold(data):
+        try:
+            new_threshold = float(data.get('threshold'))
+            shared_threshold.set(new_threshold)
+            emit('threshold_updated', {'threshold': new_threshold})
+        except Exception as e:
+            emit('error', {'message': str(e)})
+
+    def background_data_thread():
+        import time
+        while True:
+            temp = sensor.read()
+            fan_status = fan.get_status()
+            # Ajoutez l'état de la LED si besoin :
+            led_status = led.get_status() if hasattr(led, 'get_status') else None
+            socketio.emit('data', {
+                'temperature': temp,
+                'fan_status': fan_status,
+                'led_status': led_status,
+                'threshold': shared_threshold.get()
+            })
+            time.sleep(2)
 
     threading.Thread(target=background_data_thread, daemon=True).start()
     socketio.run(app, host='0.0.0.0', port=5000)
