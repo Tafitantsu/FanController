@@ -140,17 +140,21 @@ def change_password():
         return resp
     return jsonify({"msg": "Erreur lors du changement de mot de passe."}), 400
 
+shared_threshold_global = None  # Ajout
+
 # ---------------------------
 # SocketIO events
 # ---------------------------
 @socketio.on('set_threshold')
 @jwt_required()
 def handle_set_threshold(data):
-    global TEMPERATURE_THRESHOLD
+    global TEMPERATURE_THRESHOLD, shared_threshold_global
     try:
         new_threshold = float(data.get('threshold'))
         TEMPERATURE_THRESHOLD = new_threshold
-        emit('threshold_updated', {'threshold': TEMPERATURE_THRESHOLD})
+        if shared_threshold_global is not None:
+            shared_threshold_global.set(new_threshold)  # Synchronise le seuil partagé
+        emit('threshold_updated', {'threshold': new_threshold})
     except Exception as e:
         emit('error', {'message': str(e)})
 
@@ -175,9 +179,11 @@ def background_data_thread():
 # Run server
 # ---------------------------
 def run_server(sensor, fan, led, shared_threshold):
+    global shared_threshold_global
     system_hardware['sensor'] = sensor
     system_hardware['fan'] = fan
     system_hardware['led'] = led
+    shared_threshold_global = shared_threshold  # Stocke la référence
 
     def background_thread():
         import time
@@ -195,3 +201,32 @@ def run_server(sensor, fan, led, shared_threshold):
 
     threading.Thread(target=background_thread, daemon=True).start()
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
+
+from flask import render_template
+
+@app.route('/admin')
+@jwt_required()
+def admin():
+    current_identity = get_jwt_identity()
+    if current_identity != "admin":
+        return redirect(url_for('home'))
+    # Liste des utilisateurs (sans hash)
+    users = [{"username": u, "first_login": info.get("first_login", False)} for u, info in USER_PASSWORDS.items()]
+    return render_template('admin.html', users=users)
+
+@app.route('/admin/reset-password', methods=['POST'])
+@jwt_required()
+def admin_reset_password():
+    current_identity = get_jwt_identity()
+    if current_identity != "admin":
+        return jsonify({"msg": "Unauthorized"}), 403
+    username = request.form.get('username')
+    new_password = request.form.get('new_password')
+    # Si aucun nouveau mot de passe n'est fourni, on remet à "admin"
+    if username in USER_PASSWORDS:
+        pwd = new_password if new_password else "admin"
+        USER_PASSWORDS[username]['hash'] = hashlib.sha256(pwd.encode()).hexdigest()
+        USER_PASSWORDS[username]['first_login'] = True
+        save_passwords(USER_PASSWORDS)
+        return jsonify({"msg": "Mot de passe temporaire défini."}), 200
+    return jsonify({"msg": "Utilisateur ou mot de passe invalide"}), 400

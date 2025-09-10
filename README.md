@@ -49,3 +49,12 @@ Vous verrez un tableau de bord affichant la température et l'état du ventilate
 5. Arrêt du programme
 
 Pour arrêter l'application, retournez dans le terminal où le script s'exécute et appuyez sur Ctrl+C. Le programme nettoiera les ressources GPIO avant de se fermer.
+6. Administration
+
+Connectez-vous avec le compte `admin`, puis accédez à la page d’administration :  
+http://localhost:5000/admin
+
+Vous pouvez :
+- Voir la liste des utilisateurs
+- Réinitialiser le mot de passe d’un utilisateur (le mot de passe sera demandé au prochain login)
+- Revenir au tableau de bord principal

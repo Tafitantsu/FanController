@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Administration</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f7fa; color: #222; }
+        .container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); padding: 32px 28px; }
+        h1 { text-align: center; color: #1976d2; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f0f4fa; }
+        .form-inline { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        input[type="text"], input[type="password"] { padding: 4px 8px; border-radius: 4px; border: 1px solid #bdbdbd; }
+        button { background: #1976d2; color: #fff; border: none; border-radius: 4px; padding: 6px 16px; cursor: pointer; font-weight: 500; transition: background 0.2s; }
+        button:hover { background: #1565c0; }
+        .msg { color: #43a047; margin-top: 8px; text-align: center; }
+        .error { color: #e53935; margin-top: 8px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Administration</h1>
+        <table>
+            <tr>
+                <th>Utilisateur</th>
+                <th>Premier login</th>
+                <th>Action</th>
+            </tr>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ "Oui" if user.first_login else "Non" }}</td>
+                <td>
+                    <form class="form-inline" onsubmit="event.preventDefault(); resetPassword('{{ user.username }}');">
+                        <input type="password" id="pwd_{{ user.username }}" placeholder="Nouveau mot de passe" required>
+                        <button type="submit">Réinitialiser</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <div id="msg" class="msg"></div>
+        <div id="error" class="error"></div>
+        <a href="/home">Retour au tableau de bord</a>
+    </div>
+    <script>
+        function resetPassword(username) {
+            const pwd = document.getElementById('pwd_' + username).value;
+            fetch('/admin/reset-password', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ username: username, new_password: pwd })
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('msg').textContent = data.msg || '';
+                document.getElementById('error').textContent = '';
+            })
+            .catch(() => {
+                document.getElementById('msg').textContent = '';
+                document.getElementById('error').textContent = "Erreur lors de la réinitialisation.";
+            });
+        }
+    </script>
+</body>
+</html>
