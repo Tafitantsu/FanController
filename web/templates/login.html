@@ -80,14 +80,23 @@
             <input type="password" id="password" placeholder="Mot de passe" required>
             <button type="submit">Connexion</button>
         </form>
+        <form class="login-form" id="changePwdForm" style="display:none;">
+            <input type="password" id="new_password" placeholder="Nouveau mot de passe" required>
+            <input type="password" id="confirm_password" placeholder="Confirmer le mot de passe" required>
+            <button type="submit">Changer le mot de passe</button>
+        </form>
         <div id="error" class="error"></div>
     </div>
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+        const loginForm = document.getElementById('loginForm');
+        const changePwdForm = document.getElementById('changePwdForm');
+        const errorDiv = document.getElementById('error');
+        let username = '';
+
+        loginForm.addEventListener('submit', async function(event) {
             event.preventDefault();
-            const username = document.getElementById('username').value;
+            username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error');
             errorDiv.textContent = '';
 
             try {
@@ -102,16 +111,53 @@
                     })
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
+                const data = await response.json();
+                if (response.ok && data.first_login) {
+                    // Premier login, demander le changement de mot de passe
+                    loginForm.style.display = 'none';
+                    changePwdForm.style.display = 'flex';
+                    errorDiv.textContent = 'Veuillez définir un nouveau mot de passe.';
+                } else if (response.ok) {
                     localStorage.setItem('jwt_token', data.access_token);
                     window.location.href = '/';
                 } else {
-                    const data = await response.json();
                     errorDiv.textContent = data.msg || 'Identifiants invalides.';
                 }
             } catch (error) {
                 errorDiv.textContent = 'Une erreur de connexion est survenue.';
+            }
+        });
+
+        changePwdForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const newPwd = document.getElementById('new_password').value;
+            const confirmPwd = document.getElementById('confirm_password').value;
+            errorDiv.textContent = '';
+
+            if (newPwd !== confirmPwd) {
+                errorDiv.textContent = 'Les mots de passe ne correspondent pas.';
+                return;
+            }
+            try {
+                const response = await fetch('/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'username': username,
+                        'new_password': newPwd
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    localStorage.setItem('jwt_token', data.access_token);
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = data.msg || 'Erreur lors du changement de mot de passe.';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Une erreur est survenue.';
             }
         });
     </script>
