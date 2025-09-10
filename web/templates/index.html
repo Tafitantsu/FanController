@@ -3,78 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <title>Contrôle Ventilateur</title>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #f5f7fa;
-            color: #222;
+            font-family: sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
             margin: 0;
-            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         .container {
-            max-width: 420px;
-            margin: 40px auto;
+            width: 90%;
+            max-width: 500px;
             background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-            padding: 32px 28px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            padding: 32px;
+            box-sizing: border-box;
         }
         h1 {
             text-align: center;
-            color: #1976d2;
-            margin-bottom: 24px;
+            color: #1a73e8;
+            margin-bottom: 32px;
+            font-size: 28px;
         }
         .status {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .status-item {
+            background-color: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .label {
+            font-weight: 500;
+            color: #5f6368;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #202124;
         }
         .indicator {
             display: inline-block;
-            width: 16px;
-            height: 16px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-left: 8px;
             vertical-align: middle;
         }
-        .fan-on { background: #43a047; }
-        .fan-off { background: #bdbdbd; }
-        .led-on { background: #e53935; }
-        .led-off { background: #bdbdbd; }
-        .label {
-            font-weight: 500;
-        }
+        .fan-on, .led-on { background: #34a853; }
+        .fan-off, .led-off { background: #ea4335; }
+
         .threshold-form {
             display: flex;
-            gap: 8px;
+            gap: 12px;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 24px;
         }
         input[type="number"] {
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #bdbdbd;
-            width: 80px;
+            flex-grow: 1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #dadce0;
+            font-size: 16px;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
         }
         button {
-            background: #1976d2;
+            background: #1a73e8;
             color: #fff;
             border: none;
-            border-radius: 4px;
-            padding: 6px 16px;
+            border-radius: 8px;
+            padding: 10px 20px;
             cursor: pointer;
             font-weight: 500;
-            transition: background 0.2s;
+            font-size: 16px;
+            transition: background 0.2s, box-shadow 0.2s;
         }
         button:hover {
-            background: #1565c0;
+            background: #1865d2;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        #logout {
+            display: block;
+            width: 100%;
+            background: #6c757d;
+            margin-top: 12px;
+        }
+        #logout:hover {
+            background: #5a6268;
         }
         .error {
-            color: #e53935;
-            margin-top: 8px;
+            color: #ea4335;
+            margin-top: 16px;
             text-align: center;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -82,60 +118,82 @@
     <div class="container">
         <h1>Contrôle du Ventilateur</h1>
         <div class="status">
-            <div>
-                <span class="label">Température mesurée :</span>
-                <span id="temperature">--</span> °C
+            <div class="status-item">
+                <span class="label">Température</span>
+                <span class="value" id="temperature">--</span> °C
             </div>
-            <div>
-                <span class="label">État du ventilateur :</span>
+            <div class="status-item">
+                <span class="label">Seuil</span>
+                <span class="value" id="threshold">--</span> °C
+            </div>
+            <div class="status-item">
+                <span class="label">Ventilateur</span>
+                <span class="value" id="fan_status">--</span>
                 <span id="fan_indicator" class="indicator fan-off"></span>
-                <span id="fan_status">--</span>
             </div>
-            <div>
-                <span class="label">LED :</span>
+            <div class="status-item">
+                <span class="label">LED</span>
+                <span class="value" id="led_status">--</span>
                 <span id="led_indicator" class="indicator led-off"></span>
-                <span id="led_status">--</span>
-            </div>
-            <div>
-                <span class="label">Seuil actuel :</span>
-                <span id="threshold">--</span> °C
             </div>
         </div>
         <form class="threshold-form" onsubmit="event.preventDefault(); setThreshold();">
-            <label for="new_threshold">Nouveau seuil :</label>
-            <input type="number" id="new_threshold" step="0.1" min="0">
+            <input type="number" id="new_threshold" step="0.1" min="0" placeholder="Nouveau seuil">
             <button type="submit">Définir</button>
         </form>
+        <button id="logout">Déconnexion</button>
         <div id="error" class="error"></div>
     </div>
     <script>
-        const socket = io();
+        const token = localStorage.getItem('jwt_token');
+        if (!token) {
+            window.location.href = '/login';
+        }
+
+        const socket = io({
+            auth: { token }
+        });
+
+        socket.on('connect_error', (err) => {
+            if (err.data && err.data.message === "Token has expired") {
+                // Gérer l'expiration du token, par exemple en redirigeant vers la page de connexion
+            }
+            if (err.message === "Unauthorized" || (err.data && err.data.message === "Missing Authorization Header")) {
+                window.location.href = '/login';
+            }
+        });
 
         socket.on('data', function(data) {
-            document.getElementById('temperature').textContent = data.temperature;
+            document.getElementById('temperature').textContent = data.temperature.toFixed(2);
             document.getElementById('fan_status').textContent = data.fan_status;
-            document.getElementById('threshold').textContent = data.threshold;
+            document.getElementById('threshold').textContent = data.threshold.toFixed(2);
             document.getElementById('led_status').textContent = data.led_status || '--';
 
-            // Indicateurs visuels
             document.getElementById('fan_indicator').className = 'indicator ' + (data.fan_status === 'ON' ? 'fan-on' : 'fan-off');
             document.getElementById('led_indicator').className = 'indicator ' + (data.led_status === 'ON' ? 'led-on' : 'led-off');
         });
 
         socket.on('threshold_updated', function(data) {
-            document.getElementById('threshold').textContent = data.threshold;
+            document.getElementById('threshold').textContent = data.threshold.toFixed(2);
+            document.getElementById('new_threshold').value = '';
             document.getElementById('error').textContent = '';
         });
 
         socket.on('error', function(data) {
-            document.getElementById('error').textContent = data.message;
+            document.getElementById('error').textContent = `Erreur: ${data.message}`;
         });
 
         function setThreshold() {
             const val = document.getElementById('new_threshold').value;
-            socket.emit('set_threshold', {threshold: val});
+            if(val) {
+                socket.emit('set_threshold', { threshold: val });
+            }
         }
+
+        document.getElementById('logout').addEventListener('click', () => {
+            localStorage.removeItem('jwt_token');
+            window.location.href = '/login';
+        });
     </script>
 </body>
-</html>
 </html>

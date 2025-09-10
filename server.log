@@ -1,0 +1,17 @@
+Werkzeug appears to be used in a production deployment. Consider switching to a production web server instead.
+Environnement de simulation détecté (PC/VM).
+Initialisation du système de contrôle de température...
+Capteur de température initialisé en mode simulation.
+Ventilateur initialisé en mode simulation.
+LED initialisée en mode simulation.
+Démarrage du serveur web...
+Serveur web démarré. Accédez à http://localhost:5000 ou http://<IP_DU_PI>:5000
+Démarrage de la boucle de contrôle. Appuyez sur Ctrl+C pour quitter.
+Température actuelle: 22.04°C (Seuil actuel: 25.0°C)
+ * Serving Flask app 'web.app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.0.2:5000
+[33mPress CTRL+C to quit[0m

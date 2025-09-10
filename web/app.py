@@ -1,9 +1,13 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, redirect, url_for
 from flask_socketio import SocketIO, emit
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager
 import threading
+import os
 
 # Crée une instance de l'application Flask
 app = Flask(__name__)
+app.config["JWT_SECRET_KEY"] = os.urandom(24)
+jwt = JWTManager(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Variable globale pour stocker les objets hardware
@@ -19,19 +23,28 @@ global TEMPERATURE_THRESHOLD
 from config import TEMPERATURE_THRESHOLD as DEFAULT_THRESHOLD
 TEMPERATURE_THRESHOLD = DEFAULT_THRESHOLD
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username == 'admin' and password == 'admin':
+            access_token = create_access_token(identity=username)
+            return jsonify(access_token=access_token)
+        return jsonify({"msg": "Bad username or password"}), 401
+    return render_template('login.html')
+
 @app.route('/')
+@jwt_required(optional=True)
 def index():
-    """
-    Sert la page principale de l'interface web.
-    """
+    current_identity = get_jwt_identity()
+    if not current_identity:
+        return redirect(url_for('login'))
     return render_template('index.html')
 
 @app.route('/status')
+@jwt_required()
 def status():
-    """
-    Fournit l'état actuel du système au format JSON.
-    C'est le point de terminaison (endpoint) que le JavaScript interroge.
-    """
     if not all(system_hardware.values()):
         return jsonify({"error": "Hardware not initialized"}), 500
 
@@ -45,7 +58,6 @@ def status():
         'led_status': led_status
     })
 
-# Envoi périodique des données (température, état ventilateur, seuil)
 def background_data_thread():
     import time
     while True:
@@ -59,6 +71,7 @@ def background_data_thread():
         time.sleep(2)
 
 @socketio.on('set_threshold')
+@jwt_required()
 def handle_set_threshold(data):
     global TEMPERATURE_THRESHOLD
     try:
@@ -69,12 +82,12 @@ def handle_set_threshold(data):
         emit('error', {'message': str(e)})
 
 def run_server(sensor, fan, led, shared_threshold):
-    # Met à jour les objets hardware globaux
     system_hardware['sensor'] = sensor
     system_hardware['fan'] = fan
     system_hardware['led'] = led
 
     @socketio.on('set_threshold')
+    @jwt_required()
     def handle_set_threshold(data):
         try:
             new_threshold = float(data.get('threshold'))
@@ -88,7 +101,6 @@ def run_server(sensor, fan, led, shared_threshold):
         while True:
             temp = sensor.read()
             fan_status = fan.get_status()
-            # Ajoutez l'état de la LED si besoin :
             led_status = led.get_status() if hasattr(led, 'get_status') else None
             socketio.emit('data', {
                 'temperature': temp,
@@ -99,4 +111,4 @@ def run_server(sensor, fan, led, shared_threshold):
             time.sleep(2)
 
     threading.Thread(target=background_data_thread, daemon=True).start()
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
