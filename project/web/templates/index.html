@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle de Température - Maison Intelligente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0056b3;
+        }
+        .status {
+            margin: 20px 0;
+            font-size: 1.2em;
+        }
+        .status-item {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 300px;
+        }
+        .status-item span:first-child {
+            font-weight: bold;
+        }
+        .status-value {
+            font-weight: normal;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: white;
+        }
+        .temp { background-color: #28a745; }
+        .fan-on, .led-on { background-color: #dc3545; }
+        .fan-off, .led-off { background-color: #6c757d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Tableau de Bord</h1>
+    <div class="status">
+        <div class="status-item">
+            <span>Température Actuelle :</span>
+            <span id="temperature" class="status-value temp">--.-- °C</span>
+        </div>
+        <div class="status-item">
+            <span>Ventilateur :</span>
+            <span id="fan-status" class="status-value">--</span>
+        </div>
+        <div class="status-item">
+            <span>LED de Surchauffe :</span>
+            <span id="led-status" class="status-value">--</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateStatus() {
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                // Mise à jour de la température
+                document.getElementById('temperature').textContent = data.temperature.toFixed(2) + ' °C';
+
+                // Mise à jour du ventilateur
+                const fanStatus = document.getElementById('fan-status');
+                fanStatus.textContent = data.fan_status;
+                fanStatus.className = 'status-value ' + (data.fan_status === 'ON' ? 'fan-on' : 'fan-off');
+
+                // Mise à jour de la LED
+                const ledStatus = document.getElementById('led-status');
+                ledStatus.textContent = data.led_status;
+                ledStatus.className = 'status-value ' + (data.led_status === 'ON' ? 'led-on' : 'led-off');
+            })
+            .catch(error => console.error('Erreur lors de la récupération des données:', error));
+    }
+
+    // Met à jour le statut toutes les 2 secondes (correspond à READ_INTERVAL)
+    setInterval(updateStatus, 2000);
+
+    // Premier appel au chargement de la page
+    document.addEventListener('DOMContentLoaded', updateStatus);
+</script>
+
+</body>
+</html>
