@@ -34,7 +34,7 @@ def main():
             # Lecture de la température
             current_temp = sensor.read()
 
-            print(f"Température actuelle: {current_temp:.2f}°C (Seuil: {TEMPERATURE_THRESHOLD}°C)")
+            print(f"Température actuelle: {current_temp:.2f}°C (Seuil par défault: {TEMPERATURE_THRESHOLD}°C)")
 
             # Logique de contrôle
             if current_temp > TEMPERATURE_THRESHOLD:

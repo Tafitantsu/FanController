@@ -12,7 +12,7 @@ def is_raspberry_pi():
                 return True
 
     # Méthode alternative : vérifier le nom de la machine
-    if 'raspberrypi' in platform.uname().nodename.lower():
+    if 'raspberrypi' in platform.uname().node.lower():
         return True
 
     return False

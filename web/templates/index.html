@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contrôle de Température - Maison Intelligente</title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -39,6 +40,8 @@
             border: 1px solid #ddd;
             border-radius: 5px;
             width: 300px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .status-item span:first-child {
             font-weight: bold;
@@ -52,6 +55,28 @@
         .temp { background-color: #28a745; }
         .fan-on, .led-on { background-color: #dc3545; }
         .fan-off, .led-off { background-color: #6c757d; }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: calc(100% - 22px);
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -72,27 +97,37 @@
             <span id="led-status" class="status-value">--</span>
         </div>
     </div>
+    <div>
+        <label for="new_threshold">Nouveau seuil :</label>
+        <input type="number" id="new_threshold" step="0.1">
+        <button onclick="setThreshold()">Définir</button>
+    </div>
 </div>
 
 <script>
-    function updateStatus() {
-        fetch('/status')
-            .then(response => response.json())
-            .then(data => {
-                // Mise à jour de la température
-                document.getElementById('temperature').textContent = data.temperature.toFixed(2) + ' °C';
+    const socket = io();
 
-                // Mise à jour du ventilateur
-                const fanStatus = document.getElementById('fan-status');
-                fanStatus.textContent = data.fan_status;
-                fanStatus.className = 'status-value ' + (data.fan_status === 'ON' ? 'fan-on' : 'fan-off');
+    socket.on('data', function(data) {
+        document.getElementById('temperature').textContent = data.temperature.toFixed(2) + ' °C';
 
-                // Mise à jour de la LED
-                const ledStatus = document.getElementById('led-status');
-                ledStatus.textContent = data.led_status;
-                ledStatus.className = 'status-value ' + (data.led_status === 'ON' ? 'led-on' : 'led-off');
-            })
-            .catch(error => console.error('Erreur lors de la récupération des données:', error));
+        // Mise à jour du ventilateur
+        const fanStatus = document.getElementById('fan-status');
+        fanStatus.textContent = data.fan_status;
+        fanStatus.className = 'status-value ' + (data.fan_status === 'ON' ? 'fan-on' : 'fan-off');
+
+        // Mise à jour de la LED
+        const ledStatus = document.getElementById('led-status');
+        ledStatus.textContent = data.led_status;
+        ledStatus.className = 'status-value ' + (data.led_status === 'ON' ? 'led-on' : 'led-off');
+    });
+
+    socket.on('threshold_updated', function(data) {
+        document.getElementById('threshold').textContent = data.threshold;
+    });
+
+    function setThreshold() {
+        const val = document.getElementById('new_threshold').value;
+        socket.emit('set_threshold', {threshold: val});
     }
 
     // Met à jour le statut toutes les 2 secondes (correspond à READ_INTERVAL)

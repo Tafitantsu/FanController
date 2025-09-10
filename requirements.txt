@@ -1,0 +1,5 @@
+flask
+requests
+gpiozero # pour la simulation
+#RPi.GPIO #décommenter pour une raspberry pi réel
+flask-socketio

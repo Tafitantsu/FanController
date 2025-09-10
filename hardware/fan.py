@@ -7,6 +7,7 @@ if IS_RPI:
 class Fan:
     def __init__(self):
         self.is_on = False
+        global IS_RPI
         if IS_RPI:
             try:
                 self.h = lgpio.gpiochip_open(0)
@@ -16,7 +17,6 @@ class Fan:
                 print(f"Erreur d'initialisation GPIO pour le ventilateur : {e}")
                 # En cas d'échec, on bascule en mode simulation
                 self.h = None
-                global IS_RPI
                 IS_RPI = False
         else:
             print("Ventilateur initialisé en mode simulation.")
