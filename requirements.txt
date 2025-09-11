@@ -1,7 +1,7 @@
 flask
 requests
 gpiozero # pour la simulation
-#RPi.GPIO #décommenter pour une raspberry pi réel
+#RPi.GPIO #décommenter pour une raspberry pi réel ou utiliser simplement lgpio
 flask-socketio
 Flask-JWT-Extended
 cryptography
