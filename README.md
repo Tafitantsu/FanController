@@ -81,6 +81,26 @@ Dans le terminal, faites `Ctrl+C`. Les ressources GPIO sont nettoyées.
 - Authentification JWT en cookie sécurisé.
 - Seuil configurable uniquement après authentification.
 
+## Déploiement en production
+
+Pour un usage sécurisé et performant, utilisez gunicorn avec eventlet :
+
+```bash
+gunicorn --worker-class eventlet --certfile=cert.pem --keyfile=key.pem -w 4 -b 0.0.0.0:443 web.app:app
+```
+
+- `cert.pem` et `key.pem` : fichiers de certificat SSL/TLS pour HTTPS.
+- `-w 4` : nombre de workers (adaptez selon votre machine).
+- `-b 0.0.0.0:443` : écoute sur le port HTTPS standard.
+
+Installez les dépendances nécessaires :
+
+```bash
+pip install gunicorn eventlet
+```
+
+> **Ne pas utiliser le serveur Flask intégré en production.**
+
 ---
 
 **Pour toute question ou amélioration, consultez le code source ou contactez l’auteur du projet.**

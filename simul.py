@@ -1,6 +1,8 @@
 import time
 import threading
 import sys
+import subprocess
+import os
 
 # Ajoute le répertoire du projet au chemin de recherche pour les imports
 sys.path.append('.')
@@ -27,6 +29,24 @@ class SharedThreshold:
 
 shared_threshold = SharedThreshold(TEMPERATURE_THRESHOLD)
 
+def launch_gunicorn():
+    """
+    Lance le serveur web via gunicorn en mode production avec SSL.
+    """
+    cert_path = os.path.join('certs', 'cert.pem')
+    key_path = os.path.join('certs', 'key.pem')
+    cmd = [
+        'gunicorn',
+        '--worker-class', 'eventlet',
+        '--certfile', cert_path,
+        '--keyfile', key_path,
+        '-w', '4',
+        '-b', '0.0.0.0:443',
+        'web.app:app'
+    ]
+    print(f"Lancement du serveur web en production: {' '.join(cmd)}")
+    subprocess.Popen(cmd)
+
 def main():
     """
     Fonction principale du système de contrôle.
@@ -37,11 +57,10 @@ def main():
     fan = Fan()
     led = Led()
 
-    # 2. Démarrage du serveur web dans un thread séparé
-    print("Démarrage du serveur web...")
-    web_thread = threading.Thread(target=run_server, args=(sensor, fan, led, shared_threshold), daemon=True)
+    # Lancement du serveur web en production via gunicorn avec SSL
+    print("Mode production forcé. Lancement via gunicorn avec SSL.")
+    web_thread = threading.Thread(target=launch_gunicorn, daemon=True)
     web_thread.start()
-    print(f"Serveur web démarré. Accédez à http://localhost:5000 ou http://<IP_DU_PI>:5000")
 
     # 3. Boucle de contrôle principale
     print("Démarrage de la boucle de contrôle. Appuyez sur Ctrl+C pour quitter.")

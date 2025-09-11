@@ -1,3 +1,8 @@
+"""
+Déploiement recommandé en production :
+gunicorn --worker-class eventlet --certfile=cert.pem --keyfile=key.pem -w 4 -b 0.0.0.0:443 web.app:app
+"""
+
 from flask import Flask, render_template, jsonify, request, redirect, url_for
 from flask_socketio import SocketIO, emit
 from flask_jwt_extended import (

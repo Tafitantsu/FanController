@@ -5,3 +5,5 @@ gpiozero # pour la simulation
 flask-socketio
 Flask-JWT-Extended
 cryptography
+gunicorn
+eventlet
